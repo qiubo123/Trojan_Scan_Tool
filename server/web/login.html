@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 - 恶意IP管理服务端</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        background: #0a0e1a;
+        color: #e0e0e0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .login-box {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        border: 1px solid #2a2a4a;
+        border-radius: 16px;
+        padding: 40px;
+        width: 380px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .login-box h1 { text-align: center; color: #e94560; font-size: 24px; margin-bottom: 8px; }
+    .login-box .login-subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 30px; }
+    .login-box .form-group { margin-bottom: 20px; }
+    .login-box .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: #aaa; }
+    .login-box .form-group input {
+        width: 100%; background: #0a0e1a; border: 1px solid #2a2a4a;
+        color: #e0e0e0; padding: 12px 16px; border-radius: 8px;
+        font-size: 15px; outline: none; transition: border-color 0.2s;
+    }
+    .login-box .form-group input:focus { border-color: #e94560; }
+    .login-box .login-btn {
+        width: 100%; padding: 12px; background: #e94560; color: #fff;
+        border: none; border-radius: 8px; font-size: 16px; cursor: pointer;
+        transition: all 0.2s;
+    }
+    .login-box .login-btn:hover { background: #d63851; }
+    .login-box .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .login-box .login-error { color: #e94560; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+    .login-box .login-error.show { display: block; }
+    .login-box .login-footer { text-align: center; color: #555; font-size: 12px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="login-box">
+    <h1>恶意IP管理</h1>
+    <div class="login-subtitle">服务端管理平台</div>
+    <div class="form-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" placeholder="请输入用户名" autocomplete="username">
+    </div>
+    <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">登 录</button>
+    <div class="login-error" id="loginError"></div>
+</div>
+
+<script>
+const API_BASE = '/api/v1';
+
+function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const btn = document.getElementById('loginBtn');
+    const errorEl = document.getElementById('loginError');
+
+    if (!username || !password) {
+        errorEl.textContent = '用户名和密码不能为空';
+        errorEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '登录中...';
+    errorEl.classList.remove('show');
+
+    fetch(API_BASE + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.code === 0) {
+            localStorage.setItem('token', res.data.token);
+            localStorage.setItem('username', res.data.username);
+            localStorage.setItem('role', res.data.role);
+            localStorage.setItem('expires_at', res.data.expires_at);
+            window.location.href = 'dashboard.html';
+        } else {
+            errorEl.textContent = res.message || '登录失败';
+            errorEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = '登 录';
+        }
+    })
+    .catch(err => {
+        errorEl.textContent = '网络错误: ' + err.message;
+        errorEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = '登 录';
+    });
+}
+
+document.getElementById('username').addEventListener('keyup', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('password').addEventListener('keyup', e => { if (e.key === 'Enter') doLogin(); });
+
+if (localStorage.getItem('token')) {
+    fetch(API_BASE + '/health')
+        .then(r => r.json())
+        .then(res => {
+            if (res.code === 0) window.location.href = 'dashboard.html';
+        })
+        .catch(() => {});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>下载 - 恶意IP管理服务端</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        background: #0a0e1a;
+        color: #e0e0e0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .download-box {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        border: 1px solid #2a2a4a;
+        border-radius: 16px;
+        padding: 40px;
+        width: 480px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .download-box h1 { text-align: center; color: #e94560; font-size: 24px; margin-bottom: 8px; }
+    .download-box .subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 30px; }
+    .file-list { list-style: none; margin: 0; padding: 0; }
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        background: #0a0e1a;
+        border: 1px solid #2a2a4a;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        transition: border-color 0.2s;
+    }
+    .file-item:hover { border-color: #e94560; }
+    .file-item .info { display: flex; flex-direction: column; gap: 2px; }
+    .file-item .name { font-size: 15px; color: #e0e0e0; }
+    .file-item .meta { font-size: 12px; color: #888; }
+    .file-item .download-btn {
+        padding: 8px 20px;
+        background: #e94560;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+    .file-item .download-btn:hover { background: #d63851; }
+    .empty { text-align: center; color: #555; font-size: 14px; padding: 40px 0; }
+    .footer { text-align: center; color: #555; font-size: 12px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="download-box">
+    <h1>客户端下载</h1>
+    <div class="subtitle">危险外联排查工具桌面端</div>
+    <div id="fileList"></div>
+    <div class="footer">恶意IP管理服务端</div>
+</div>
+
+<script>
+const DOWNLOAD_BASE = '/download';
+
+function formatSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+}
+
+function loadFiles() {
+    const container = document.getElementById('fileList');
+    container.innerHTML = '<div class="empty">加载中...</div>';
+
+    fetch(DOWNLOAD_BASE + '/index.json')
+        .then(r => r.json())
+        .then(files => {
+            if (!files || files.length === 0) {
+                container.innerHTML = '<div class="empty">暂无可用下载文件</div>';
+                return;
+            }
+            let html = '<ul class="file-list">';
+            for (const f of files) {
+                const sizeText = f.size ? formatSize(f.size) : '';
+                const dateText = f.date || '';
+                html += `
+                    <li class="file-item">
+                        <div class="info">
+                            <span class="name">${esc(f.name)}</span>
+                            <span class="meta">${sizeText}${sizeText && dateText ? ' · ' : ''}${dateText}</span>
+                        </div>
+                        <a class="download-btn" href="${DOWNLOAD_BASE}/${encodeURIComponent(f.name)}" download>下载</a>
+                    </li>
+                `;
+            }
+            html += '</ul>';
+            container.innerHTML = html;
+        })
+        .catch(() => {
+            fetch(DOWNLOAD_BASE + '/')
+                .then(r => r.text())
+                .then(() => {
+                    container.innerHTML = '<div class="empty">暂无可用下载文件</div>';
+                })
+                .catch(() => {
+                    container.innerHTML = '<div class="empty">无法获取文件列表</div>';
+                });
+        });
+}
+
+function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+loadFiles();
+</script>
+</body>
+</html>
