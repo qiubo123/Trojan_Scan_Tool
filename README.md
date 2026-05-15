@@ -152,12 +152,6 @@ pyinstaller build.spec
 
 ---
 
-## 📄 许可证
-
-MIT License
-
----
-
 ## 📞 联系方式
 
 如有问题或建议，欢迎提交 Issue 或联系开发者。
