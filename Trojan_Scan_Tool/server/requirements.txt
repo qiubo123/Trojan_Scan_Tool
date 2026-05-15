@@ -1,4 +1,0 @@
-fastapi==0.136.1
-pydantic==2.13.4
-server==0.0.0
-uvicorn==0.46.0
