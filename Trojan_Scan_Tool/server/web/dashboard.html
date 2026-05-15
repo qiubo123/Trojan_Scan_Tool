@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仪表盘 - 恶意IP管理服务端</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="header">
+    <div>
+        <h1>恶意IP管理服务端</h1>
+        <div class="subtitle">仪表盘</div>
+    </div>
+    <div class="user-info">
+        <span class="status-dot"></span>
+        <span>运行中</span>
+        <span class="username" id="displayUser"></span>
+        <button class="logout-btn" onclick="doLogout()">退出登录</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('dashboard')">仪表盘</div>
+        <div class="tab" onclick="switchTab('ips')">IP管理</div>
+        <div class="tab" onclick="switchTab('clients')">客户端</div>
+        <div class="tab" onclick="switchTab('audit')">审计日志</div>
+        <div class="tab" onclick="switchTab('settings')">设置</div>
+        <div class="tab" onclick="switchTab('keys')">密钥管理</div>
+        <div class="tab" onclick="switchTab('pending')">审核管理</div>
+    </div>
+
+    <div id="tab-dashboard" class="tab-content active">
+        <div class="stats-row" id="statsCards"></div>
+        <div class="section-card">
+            <h3>威胁类型分布</h3>
+            <div class="type-chart" id="typeChart"></div>
+        </div>
+    </div>
+
+    <div id="tab-ips" class="tab-content">
+        <div class="toolbar">
+            <input type="text" id="searchInput" placeholder="搜索IP、威胁类型、描述..." oninput="searchIPs()">
+            <select id="statusFilter" onchange="loadIPs()">
+                <option value="">全部状态</option>
+                <option value="active">活跃</option>
+                <option value="expired">已过期</option>
+            </select>
+            <button class="btn btn-primary" onclick="showAddModal()">添加IP</button>
+            <button class="btn btn-success" onclick="showBatchModal()">批量导入</button>
+            <button class="btn btn-outline" onclick="loadIPs()">刷新</button>
+        </div>
+        <div id="ipTableWrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:4%">ID</th>
+                        <th style="width:15%">IP地址</th>
+                        <th style="width:5%">端口</th>
+                        <th style="width:9%">威胁类型</th>
+                        <th style="width:7%">来源</th>
+                        <th style="width:6%">状态</th>
+                        <th style="width:10%">归属地</th>
+                        <th style="width:10%">标签</th>
+                        <th style="width:13%">创建时间</th>
+                        <th style="width:21%">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="ipTableBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="ipPagination"></div>
+    </div>
+
+    <div id="tab-clients" class="tab-content">
+        <div class="toolbar">
+            <button class="btn btn-outline" onclick="loadClients()">刷新</button>
+        </div>
+        <div class="client-list" id="clientList"></div>
+    </div>
+
+    <div id="tab-audit" class="tab-content">
+        <div class="toolbar">
+            <button class="btn btn-outline" onclick="loadAuditLog()">刷新</button>
+        </div>
+        <div id="auditTableWrapper">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th style="width:8%">ID</th>
+                        <th style="width:12%">用户名</th>
+                        <th style="width:14%">操作</th>
+                        <th style="width:38%">详情</th>
+                        <th style="width:14%">IP地址</th>
+                        <th style="width:14%">时间</th>
+                    </tr>
+                </thead>
+                <tbody id="auditTableBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="auditPagination"></div>
+    </div>
+
+    <div id="tab-settings" class="tab-content">
+        <div class="section-card">
+            <h3>允许访问的网段</h3>
+            <div class="settings-desc">每行输入一个 IP 或网段（CIDR格式），不在列表中的地址将被拒绝访问。留空表示允许所有 IP 访问。</div>
+            <div class="form-group">
+                <textarea id="networksTextarea" class="networks-textarea" placeholder="127.0.0.0/8&#10;10.0.0.0/8&#10;172.16.0.0/12&#10;192.168.0.0/16&#10;192.168.1.100"></textarea>
+            </div>
+            <div class="network-error" id="networkError"></div>
+            <div class="btn-row" style="margin-top:16px;">
+                <button class="btn btn-success" onclick="saveNetworks()">保存配置</button>
+                <button class="btn btn-outline" onclick="loadNetworks()">撤销更改</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-keys" class="tab-content">
+        <div class="toolbar">
+            <span style="color:#a0a0c0;font-size:13px;">API密钥用于客户端与服务端之间的身份验证，每个密钥有独立的用途标识。最多支持 20 个密钥。</span>
+            <span style="flex:1"></span>
+            <button class="btn btn-success" onclick="showAddKeyModal()">添加密钥</button>
+        </div>
+        <div id="keyTableWrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:18%">ID</th>
+                        <th style="width:22%">用途</th>
+                        <th style="width:25%">API密钥</th>
+                        <th style="width:20%">创建时间</th>
+                        <th style="width:15%">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="keyTableBody"></tbody>
+            </table>
+        </div>
+        <div style="margin-top:12px;text-align:right;">
+            <span id="keyCountInfo" style="color:#888;font-size:13px;"></span>
+        </div>
+    </div>
+
+    <div id="tab-pending" class="tab-content">
+        <div class="toolbar">
+            <span style="color:#a0a0c0;font-size:13px;">客户端推送的IP数据需要审核后才能加入情报库。</span>
+            <div class="btn-group" style="margin-left:12px;">
+                <button class="tab-btn active" data-pending-filter="pending" onclick="setPendingFilter('pending')">待审核</button>
+                <button class="tab-btn" data-pending-filter="rejected" onclick="setPendingFilter('rejected')">已拒绝</button>
+                <button class="tab-btn" data-pending-filter="all" onclick="setPendingFilter('all')">全部</button>
+            </div>
+            <span style="flex:1"></span>
+            <button class="btn btn-outline" onclick="loadPending()">刷新</button>
+        </div>
+        <div id="pendingTableWrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:45px">ID</th>
+                        <th style="width:110px">客户端IP</th>
+                        <th style="width:100px">主机名</th>
+                        <th style="width:90px">系统版本</th>
+                        <th style="width:60px">IP数量</th>
+                        <th style="width:60px">状态</th>
+                        <th style="width:135px">推送时间</th>
+                        <th style="width:135px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingTableBody"></tbody>
+            </table>
+        </div>
+        <div style="margin-top:12px;text-align:right;">
+            <span id="pendingCountInfo" style="color:#888;font-size:13px;"></span>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="addKeyModal">
+    <div class="modal">
+        <h2>添加API密钥</h2>
+        <div class="form-group"><label>用途 *</label><input type="text" id="addKeyPurpose" placeholder="例如: 客户端同步、桌面端连接"></div>
+        <div class="form-group"><label>密钥内容（留空自动生成10位）</label><input type="text" id="addKeyValue" placeholder="10位，留空自动生成"></div>
+        <div class="btn-row" style="margin-top:16px;">
+            <button class="btn btn-success" onclick="confirmAddKey()">确认添加</button>
+            <button class="btn btn-outline" onclick="closeModal('addKeyModal')">取消</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="pendingDetailModal">
+    <div class="modal" style="width:92vw;max-width:1200px;">
+        <h2>推送详情</h2>
+        <div id="pendingDetailBody" style="margin:16px 0;line-height:1.8;font-size:13px;color:#ccc;"></div>
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="closeModal('pendingDetailModal')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="confirmApproveModal">
+    <div class="modal">
+        <h2 style="color:#4caf50;">确认批准</h2>
+        <p id="confirmApproveText" style="margin:16px 0;color:#ccc;"></p>
+        <div class="btn-row">
+            <button class="btn btn-success" onclick="doApprovePending()">确认批准</button>
+            <button class="btn btn-outline" onclick="closeModal('confirmApproveModal')">取消</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="confirmRejectModal">
+    <div class="modal">
+        <h2 style="color:#e94560;">确认拒绝</h2>
+        <p id="confirmRejectText" style="margin:16px 0;color:#ccc;"></p>
+        <div class="btn-row">
+            <button class="btn btn-danger" onclick="doRejectPending()">确认拒绝</button>
+            <button class="btn btn-outline" onclick="closeModal('confirmRejectModal')">取消</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="confirmKeyDeleteModal">
+    <div class="modal">
+        <h2 style="color:#e94560;">确认删除</h2>
+        <p id="confirmKeyDeleteText" style="margin:16px 0;color:#ccc;"></p>
+        <div class="btn-row">
+            <button class="btn btn-danger" onclick="doDeleteKey()">确认删除</button>
+            <button class="btn btn-outline" onclick="closeModal('confirmKeyDeleteModal')">取消</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="confirmKeyUpdateModal">
+    <div class="modal">
+        <h2 style="color:#f39c12;">确认更新</h2>
+        <p id="confirmKeyUpdateText" style="margin:16px 0;color:#ccc;"></p>
+        <div class="btn-row">
+            <button class="btn btn-warning" onclick="doUpdateKey()">确认更新</button>
+            <button class="btn btn-outline" onclick="closeModal('confirmKeyUpdateModal')">取消</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="addModal">
+    <div class="modal">
+        <h2>添加恶意IP</h2>
+        <div class="form-group"><label>IP地址 *</label><input type="text" id="addIp" placeholder="如: 192.168.1.100"></div>
+        <div class="form-group"><label>端口</label><input type="number" id="addPort" value="0"></div>
+        <div class="form-group"><label>威胁类型</label>
+            <select id="addType">
+                <option value="C2服务器">C2服务器</option>
+                <option value="扫描器">扫描器</option>
+                <option value="僵尸网络">僵尸网络</option>
+                <option value="钓鱼网站">钓鱼网站</option>
+                <option value="恶意下载">恶意下载</option>
+                <option value="其他">其他</option>
+            </select>
+        </div>
+        <div class="form-group"><label>描述</label><textarea id="addDesc" rows="2"></textarea></div>
+        <div class="form-group"><label>归属地</label><input type="text" id="addLocation" placeholder="如: 中国北京"></div>
+        <div class="form-group"><label>标签</label><input type="text" id="addTags" placeholder="如: 木马,勒索软件"></div>
+        <div class="form-group"><label>关联病毒</label><input type="text" id="addVirus" placeholder="如: WannaCry"></div>
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="closeModal('addModal')">取消</button>
+            <button class="btn btn-primary" onclick="submitAdd()">添加</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="batchModal">
+    <div class="modal" style="max-width:600px;">
+        <h2>批量导入IP</h2>
+        <div class="format-hint">
+            每行一个IP，支持以下格式：<br>
+            <code>IP地址</code> — 仅IP<br>
+            <code>IP地址|端口|威胁类型|描述</code> — 完整格式<br>
+            <span class="example">示例: 192.168.1.100|8080|C2服务器|恶意控制端</span>
+        </div>
+        <div class="form-group">
+            <label>导入数据</label>
+            <textarea class="batch-textarea" id="batchData" placeholder="每行一个IP..."></textarea>
+        </div>
+        <div class="batch-count" id="batchCount">已识别: 0 个有效IP</div>
+        <div class="batch-preview" id="batchPreview"></div>
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="closeModal('batchModal')">取消</button>
+            <button class="btn btn-success" onclick="submitBatch()">导入</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <h2>编辑IP</h2>
+        <input type="hidden" id="editId">
+        <div class="form-group"><label>IP地址</label><input type="text" id="editIp"></div>
+        <div class="form-group"><label>端口</label><input type="number" id="editPort"></div>
+        <div class="form-group"><label>威胁类型</label>
+            <select id="editType">
+                <option value="C2服务器">C2服务器</option>
+                <option value="扫描器">扫描器</option>
+                <option value="僵尸网络">僵尸网络</option>
+                <option value="钓鱼网站">钓鱼网站</option>
+                <option value="恶意下载">恶意下载</option>
+                <option value="其他">其他</option>
+            </select>
+        </div>
+        <div class="form-group"><label>描述</label><textarea id="editDesc" rows="2"></textarea></div>
+        <div class="form-group"><label>归属地</label><input type="text" id="editLocation"></div>
+        <div class="form-group"><label>标签</label><input type="text" id="editTags"></div>
+        <div class="form-group"><label>关联病毒</label><input type="text" id="editVirus"></div>
+        <div class="btn-row">
+            <button class="btn btn-outline" onclick="closeModal('editModal')">取消</button>
+            <button class="btn btn-primary" onclick="submitEdit()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
