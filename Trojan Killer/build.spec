@@ -4,7 +4,10 @@ import sys
 import os
 from pathlib import Path
 
-PROJECT_ROOT = Path(r"D:\木马病毒查杀工具")
+if getattr(sys, 'frozen', False):
+    PROJECT_ROOT = Path(sys.executable).parent
+else:
+    PROJECT_ROOT = Path(os.path.dirname(os.path.abspath(sys.argv[0])))
 
 block_cipher = None
 
